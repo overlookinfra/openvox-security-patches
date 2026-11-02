@@ -1,0 +1,53 @@
+From 335e64ff98932c2c83c4523b4ee7b5a22ea13b84 Mon Sep 17 00:00:00 2001
+From: Charlie Sharpsteen <charlie@overlookinfratech.com>
+Date: Wed, 21 Oct 2026 15:35:48 +0200
+Subject: [PATCH] Re-factor domain name matching
+
+This commit re-factors the logic used to match certificate names by
+separating wildcard and exact name matching into separate cases.
+
+Co-authored-by: Claude Opus 5.5 <noreply@anthropic.com>
+Signed-off-by: Charlie Sharpsteen <charlie@overlookinfratech.com>
+---
+ src/puppetlabs/trapperkeeper/authorization/acl.clj | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/src/puppetlabs/trapperkeeper/authorization/acl.clj b/src/puppetlabs/trapperkeeper/authorization/acl.clj
+index 9c33be0..d80d920 100644
+--- a/src/puppetlabs/trapperkeeper/authorization/acl.clj
++++ b/src/puppetlabs/trapperkeeper/authorization/acl.clj
+@@ -79,7 +79,7 @@
+ (def ACE
+   "An authorization entry matching a network or a domain"
+   {:auth-type AuthType
+-   :match (schema/enum :string :regex :backreference :extensions :rbac-permission)
++   :match (schema/enum :string :wildcard :regex :backreference :extensions :rbac-permission)
+    :value ACEValue})
+ 
+ (def ACL
+@@ -166,7 +166,7 @@
+     (re-matches #"^\*(\.(\w[-\w]*)){1,}$" certname)
+     (let [host_sans_star (vec (drop-last (split-domain certname)))]
+       {:auth-type auth-type
+-       :match :string
++       :match :wildcard
+        :value host_sans_star})
+ 
+     ; backreference
+@@ -199,9 +199,10 @@
+   [{:keys [value match]} :- ACE
+    to-match :- schema/Str]
+   (let [match-split-domain (split-domain to-match)]
+-    (if (= :regex match)
+-      (boolean (re-find (re-pattern value) to-match))
+-      (every? (fn [[a b]] (= a b)) (map vector value match-split-domain)))))
++    (case match
++      :regex (boolean (re-find (re-pattern value) to-match))
++      :wildcard (= value (take (count value) match-split-domain))
++      (= value match-split-domain))))
+ 
+ (schema/defn ^:private substitute-backreference :- schema/Str
+   "substiture $1, $2... by the same index in the captures vector"
+-- 
+2.56.0
+
