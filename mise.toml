@@ -1,0 +1,17 @@
+# This version of mise defaults to installing pre-compiled Ruby
+# binaries vs. downloading the source and running ruby-build.
+min_version = "2026.8.0"
+
+[tools]
+ruby = "4.0"
+shellcheck = "latest"
+
+# Auto-add local binstubs.
+[env]
+_.path = ["./bin"]
+BUNDLE_PATH = "./vendor"
+
+# === Ruby Operations ===
+[tasks.bundle-install]
+run     = ["bundle install", "bundle binstubs rake"]
+sources = ["Gemfile", "Gemfile.local"]
