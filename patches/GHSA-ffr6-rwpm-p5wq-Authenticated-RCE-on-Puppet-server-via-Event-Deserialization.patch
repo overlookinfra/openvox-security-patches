@@ -1,0 +1,38 @@
+From 2ffe97a411815271b66288e740305caaa63e6a9a Mon Sep 17 00:00:00 2001
+From: nmburgan <13688219+nmburgan@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 03:22:39 +0000
+Subject: [PATCH] Read event data hashes with the stringifying converter
+
+Event#to_data_hash writes event data with ToStringifiedConverter, while
+#initialize_from_hash read it back with FromDataConverter. Read with the
+same stringifying converter so a deserialized event contains only plain data
+and reconstructs no rich values. A rich-typed value written by a Puppet 5
+agent is no longer reconstructed into an object. Its tagged hash arrives
+with the reserved keys renamed instead.
+
+Signed-off-by: nmburgan <13688219+nmburgan@users.noreply.github.com>
+---
+ lib/puppet/transaction/event.rb | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/lib/puppet/transaction/event.rb b/lib/puppet/transaction/event.rb
+index 7893db862b..0ab95a4193 100644
+--- a/lib/puppet/transaction/event.rb
++++ b/lib/puppet/transaction/event.rb
+@@ -68,10 +68,9 @@ class Puppet::Transaction::Event
+   alias == eql?
+ 
+   def initialize_from_hash(data)
+-    data = Puppet::Pops::Serialization::FromDataConverter.convert(data, {
+-                                                                    :allow_unresolved => true,
+-                                                                    :loader => Puppet::Pops::Loaders.static_loader
+-                                                                  })
++    # Read with the stringifying converter, the same one #to_data_hash writes with.
++    # Event values contain no rich data downstream, so there is nothing to reconstruct.
++    data = Puppet::Pops::Serialization::ToStringifiedConverter.convert(data, :message_prefix => 'Event')
+     @audited = data['audited']
+     @property = data['property']
+     @previous_value = data['previous_value']
+-- 
+2.56.0
+
